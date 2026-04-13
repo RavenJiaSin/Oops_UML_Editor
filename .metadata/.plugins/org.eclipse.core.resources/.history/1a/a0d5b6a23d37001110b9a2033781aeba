@@ -176,7 +176,7 @@ public class MainFrame extends JFrame {
 
         // 3. 把新按鈕設定為啟動狀態 (黑色)
         if (currentActiveBtn != null) {
-            currentActiveBtn.setBackground(Color.GRAY);            
+            currentActiveBtn.setBackground(Color.BLACK);            
         }
     }
 }

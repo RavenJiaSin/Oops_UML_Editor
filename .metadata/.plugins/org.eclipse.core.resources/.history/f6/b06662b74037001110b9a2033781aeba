@@ -23,7 +23,6 @@ public class CompositeObject extends Shape {
         int minY = Integer.MAX_VALUE;
         int maxX = Integer.MIN_VALUE;
         int maxY = Integer.MIN_VALUE;
-        int bleed = 2;
 
         for (Shape s : children) {
             minX = Math.min(minX, s.x);
@@ -32,10 +31,10 @@ public class CompositeObject extends Shape {
             maxY = Math.max(maxY, s.y + s.height);
         }
 
-        this.x = minX - bleed;
-        this.y = minY - bleed;
-        this.width = maxX - minX + bleed*2;
-        this.height = maxY - minY + bleed*2;
+        this.x = minX;
+        this.y = minY;
+        this.width = maxX - minX;
+        this.height = maxY - minY;
     }
     
     @Override
