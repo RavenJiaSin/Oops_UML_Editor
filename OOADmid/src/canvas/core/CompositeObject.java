@@ -1,0 +1,92 @@
+package canvas.core;
+
+import java.awt.Color;
+import java.awt.Graphics;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.util.ArrayList;
+import java.util.List;
+
+public class CompositeObject extends Shape {
+    private List<Shape> children = new ArrayList<>();
+
+    public CompositeObject(List<Shape> shapes) {
+        this.children.addAll(shapes);
+        updateBounds();   // 計算整體外框
+        createPorts();
+    }
+    
+    private void updateBounds() {
+        int minX = Integer.MAX_VALUE;
+        int minY = Integer.MAX_VALUE;
+        int maxX = Integer.MIN_VALUE;
+        int maxY = Integer.MIN_VALUE;
+
+        for (Shape s : children) {
+            minX = Math.min(minX, s.x);
+            minY = Math.min(minY, s.y);
+            maxX = Math.max(maxX, s.x + s.width);
+            maxY = Math.max(maxY, s.y + s.height);
+        }
+
+        this.x = minX;
+        this.y = minY;
+        this.width = maxX - minX;
+        this.height = maxY - minY;
+    }
+    
+    @Override
+    public void draw(Graphics g) {
+        // 1. 畫所有 child
+        for (Shape s : children) {
+            s.draw(g);
+            List<LineObject> lines = s.getLines();
+            for (LineObject l : lines) {
+            	l.draw(g);
+            }
+        }
+
+        // 2. 如果選取 → 畫外框 + ports
+        if (isSelected) {
+            g.setColor(Color.BLACK);
+            g.drawRect(x, y, width, height);
+            drawPorts(g);
+        }
+    }
+    
+    @Override
+    public boolean isInside(Point p) {
+    	return new Rectangle(x, y, width, height).contains(p);
+    }
+    
+    @Override
+    public void move(int dx, int dy) {
+        super.move(dx, dy); // 更新自己
+
+        for (Shape s : children) {
+            s.move(dx, dy); // 子物件同步移動
+        }
+    }
+    
+    @Override
+    public void createPorts() {}
+    
+    @Override
+    public void resize(Port port, Point p, Point anchor) {}
+    
+    @Override
+    public void setSelected(boolean b) {
+    	for (Shape s : children) {
+    		s.setSelected(b);
+    	}
+    	this.isSelected = b; 
+    }
+    
+    
+    public List<Shape> getChildren() {
+        return children;
+    }
+    
+    
+}
+

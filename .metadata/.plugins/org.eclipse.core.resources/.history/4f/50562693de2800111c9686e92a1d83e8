@@ -1,0 +1,172 @@
+package canvas.ui;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+
+import canvas.controller.EditorController;
+import canvas.modes.CreateLineMode;
+import canvas.modes.CreateShapeMode;
+import canvas.modes.CreateLineMode;
+import canvas.modes.Mode;
+import canvas.modes.SelectMode;
+
+public class MainFrame extends JFrame {
+    private CanvasPanel canvas;
+    private JButton currentActiveBtn; // 記錄當前持久模式按鈕 (如 Select)
+    private Mode lastPersistentMode;   // 記錄原本的模式實體
+    private EditorController controller;
+
+    public MainFrame() {
+        setTitle("Oops UML Editor");
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setSize(800, 600);
+        setLayout(new BorderLayout());
+
+        setupSideBar();
+        setupMenuBar();
+        
+        controller = new EditorController();
+        canvas = new CanvasPanel(controller);
+        add(canvas, BorderLayout.CENTER);
+        
+        lastPersistentMode = new SelectMode(canvas, controller);
+        canvas.setMode(lastPersistentMode);
+    }
+
+    private void setupSideBar() {
+        JPanel sideBar = new JPanel(new GridLayout(6, 1));
+        String[] btnNames = {"Select", "Association", "Generalization", "Composition", "Rect", "Oval"};
+
+        for (String name : btnNames) {
+        	java.net.URL imgURL = getClass().getResource("/" + name + ".png");
+            JButton btn = new JButton(new javax.swing.ImageIcon(imgURL));
+            btn.setToolTipText(name);
+            btn.setFocusPainted(false);
+            btn.setBackground(Color.WHITE);
+            
+
+            if (name.equals("Rect") || name.equals("Oval")) {
+                // Use Case A: 瞬時模式
+            	btn.addMouseListener(new MouseAdapter() {
+            	    private CreateShapeMode dragMode;
+            	    private JButton lastbtn = currentActiveBtn;
+
+            	    @Override
+            	    public void mousePressed(MouseEvent e) {
+            	    	setCurrentActiveBtn(btn);                  
+            	        // 初始化模式，但不透過 canvas.setMode (因為事件被按鈕鎖定了)
+            	    	dragMode = new CreateShapeMode(name, canvas, controller);
+            	    }
+
+            	    @Override
+            	    public void mouseDragged(MouseEvent e) {
+            	        // 雖然是在按鈕上拖曳，但我們要讓 dragMode 知道現在的位置
+            	        if (dragMode != null) dragMode.mouseDragged(e);
+            	    }
+
+            	    @Override
+            	    public void mouseReleased(MouseEvent e) {
+            	        // 關鍵：按鈕捕捉到放開事件時，通知模式執行建立邏輯
+            	        if (dragMode != null) {
+            	            dragMode.mouseReleased(e);
+            	            dragMode = null; // 清除暫時狀態
+            	        }
+            	        
+            	        if(lastbtn != null) {
+            	        	setCurrentActiveBtn(lastbtn); 
+            	        	canvas.setMode(lastPersistentMode);
+            	        }  
+            	    }
+            	});
+            } else {
+                // 持久模式
+                btn.addActionListener(e -> {
+                	setCurrentActiveBtn(btn);
+                	if (name.equals("Select")) {
+                		lastPersistentMode = new SelectMode(canvas, controller);
+                        canvas.setMode(lastPersistentMode);
+                    }else if(name.equals("Association") || name.equals("Generalization") || name.equals("Composition") ) {
+                    	lastPersistentMode = new CreateLineMode(canvas, controller, name);
+                        canvas.setMode(lastPersistentMode);
+                    }
+                });
+                
+                if (name.equals("Select")) {
+                    currentActiveBtn = btn;
+                    setCurrentActiveBtn(btn);   // 讓 UI 變黑
+                }
+            }
+            sideBar.add(btn);
+        }
+        add(sideBar, BorderLayout.WEST);
+    }
+    
+    private void setupMenuBar() {
+        JMenuBar menuBar = new JMenuBar();
+
+        // --- File Menu ---
+        JMenu fileMenu = new JMenu("File");
+        // 這裡可以預留 Open/Save 功能
+        menuBar.add(fileMenu);
+
+        // --- Edit Menu ---
+        JMenu editMenu = new JMenu("Edit");
+        
+        // 1. Change Object Name (Label)
+        JMenuItem labelItem = new JMenuItem("Lable");
+        labelItem.addActionListener(e -> {
+        	// 1. 先從 Controller 拿到目前選取物件的資訊，作為對話框初始值
+            Shape target = controller.getFirstSelectedShape();
+            
+            if (target != null) {
+                // 2. 顯示對話框（View 層級的互動）
+                LabelDialog dialog = new LabelDialog(this, target.getLabelName(), target.getBgColor());
+                dialog.setVisible(true);
+
+                // 3. 如果使用者按下 OK，將邏輯交回 Controller 處理
+                if (dialog.isConfirmed()) {
+                    controller.updateSelectedStyle(dialog.getInputName(), dialog.getSelectedColor());
+                    canvas.repaint(); // 通知畫布刷新
+                }
+            }
+        });
+        
+        // 2. Group
+        JMenuItem groupItem = new JMenuItem("Group");
+        groupItem.addActionListener(e -> {
+            //controller.groupSelectedShapes();
+            canvas.repaint();
+        });
+        
+        // 3. Ungroup
+        JMenuItem ungroupItem = new JMenuItem("Ungroup");
+        ungroupItem.addActionListener(e -> {
+            //controller.ungroupSelectedShapes();
+            canvas.repaint();
+        });
+
+        editMenu.add(labelItem);
+        editMenu.add(groupItem);
+        editMenu.add(ungroupItem);
+        menuBar.add(editMenu);
+
+        setJMenuBar(menuBar);
+    }
+    
+    private void setCurrentActiveBtn(JButton btn) {
+        // 1. 先把原本啟動中的按鈕恢復原狀 (白色)
+        if (currentActiveBtn != null) {
+            currentActiveBtn.setBackground(Color.WHITE);            
+        }
+
+        // 2. 更新記錄指標
+        currentActiveBtn = btn;
+
+        // 3. 把新按鈕設定為啟動狀態 (黑色)
+        if (currentActiveBtn != null) {
+            currentActiveBtn.setBackground(Color.BLACK);            
+        }
+    }
+}
